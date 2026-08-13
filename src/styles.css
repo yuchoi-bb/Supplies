@@ -383,6 +383,40 @@ body {
   accent-color: var(--primary);
 }
 
+.subtopic-card {
+  margin: 18px 0 8px;
+  padding: 6px 10px 10px;
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  background: #eef3fd;
+}
+
+.subtopic-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px 2px;
+}
+
+.subtopic-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--primary-dark);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.subtopic-card .section-card {
+  background: var(--card);
+}
+
+.add-subtopic {
+  margin-top: 10px;
+}
+
 .progress-bar-wrap {
   display: flex;
   align-items: center;
