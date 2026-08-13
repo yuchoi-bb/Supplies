@@ -86,6 +86,23 @@ export function emptyTemplate(name: string): Template {
   };
 }
 
+// 기본 준비물(주제) 전체를 새 이름으로 복사. 모든 대제목/소제목이 새 id로 복제된다.
+// 예: "마라톤"을 복사해 "트레일러닝대회"를 만들 때 사용.
+export function duplicateTemplate(template: Template, name: string): Template {
+  const now = Date.now();
+  return {
+    id: uid(),
+    name,
+    sections: template.sections.map((s) => ({
+      id: uid(),
+      title: s.title,
+      items: s.items.map((it) => ({ id: uid(), name: it.name })),
+    })),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function emptyList(name: string): PackList {
   const now = Date.now();
   return {

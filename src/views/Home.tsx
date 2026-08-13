@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { PackList, Template } from '../types';
-import { emptyList, emptyTemplate, listFromTemplate } from '../types';
+import { duplicateTemplate, emptyList, emptyTemplate, listFromTemplate } from '../types';
 
 interface Props {
   templates: Template[];
@@ -39,6 +39,19 @@ export function Home({
     const name = prompt('새 기본 준비물 이름 (예: 마라톤, 자전거대회, 캠핑)');
     if (!name || !name.trim()) return;
     const t = emptyTemplate(name.trim());
+    onCreateTemplate(t);
+    onOpenTemplate(t.id);
+  }
+
+  // 기본 준비물(주제) 전체를 통째로 복사해 새 기본 준비물을 만든다.
+  // 예: "마라톤"을 복사해 "트레일러닝대회"로.
+  function copyTemplate(source: Template) {
+    const name = prompt(
+      `"${source.name}"을(를) 복사해서 만들 새 기본 준비물 이름`,
+      `${source.name} 복사`
+    );
+    if (!name || !name.trim()) return;
+    const t = duplicateTemplate(source, name.trim());
     onCreateTemplate(t);
     onOpenTemplate(t.id);
   }
@@ -127,12 +140,19 @@ export function Home({
           {templates.map((t) => {
             const count = t.sections.reduce((n, s) => n + s.items.length, 0);
             return (
-              <li key={t.id}>
+              <li key={t.id} className="template-row">
                 <button className="card row-card" onClick={() => onOpenTemplate(t.id)}>
                   <div className="row-main">
                     <span className="row-title">{t.name}</span>
                   </div>
                   <span className="muted">{count}개 항목</span>
+                </button>
+                <button
+                  className="btn btn-sm copy-template-btn"
+                  onClick={() => copyTemplate(t)}
+                  title="이 주제 전체를 복사해 새 기본 준비물 만들기"
+                >
+                  복사
                 </button>
               </li>
             );

@@ -131,6 +131,22 @@ body {
   color: var(--text);
 }
 
+.template-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.template-row .row-card {
+  flex: 1;
+}
+
+.copy-template-btn {
+  flex-shrink: 0;
+  align-self: stretch;
+  white-space: nowrap;
+}
+
 .row-main {
   display: flex;
   align-items: center;
