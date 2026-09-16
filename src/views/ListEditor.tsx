@@ -8,7 +8,6 @@ interface Props {
   onChange: (l: PackList) => void;
   onTemplateChange: (t: Template) => void;
   onDelete: () => void;
-  onBack: () => void;
 }
 
 export function ListEditor({
@@ -17,7 +16,6 @@ export function ListEditor({
   onChange,
   onTemplateChange,
   onDelete,
-  onBack,
 }: Props) {
   const [newItemName, setNewItemName] = useState<Record<string, string>>({});
   // 섹션별 "기본 준비물에도 추가" 체크 상태
@@ -243,9 +241,6 @@ export function ListEditor({
   return (
     <div>
       <div className="page-head">
-        <button className="btn btn-ghost" onClick={onBack}>
-          ← 뒤로
-        </button>
         <h2 className="page-title" onClick={rename} title="눌러서 이름 수정">
           {list.name} <span className="edit-hint">✏️</span>
         </h2>

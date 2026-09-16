@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { App as CapApp } from '@capacitor/app';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, firebaseEnabled, signInWithGoogle, signOut } from './firebase';
 import { CloudRepo, LocalRepo, type Repo } from './storage';
@@ -76,6 +77,55 @@ export default function App() {
     });
   }, []);
 
+  // 뒤로 가기: 화면 상단 버튼 대신 안드로이드 하단 back키(및 브라우저 뒤로가기)로 처리.
+  // 편집 화면을 열면 히스토리를 한 칸 쌓고, back이 오면 홈으로 돌아온다. 홈에서 back이면 앱 종료.
+  useEffect(() => {
+    try {
+      window.history.replaceState({ depth: 0 }, '');
+    } catch {
+      /* 무시 */
+    }
+
+    const onPop = () => setView({ kind: 'home' });
+    window.addEventListener('popstate', onPop);
+
+    let handle: { remove: () => void } | undefined;
+    CapApp.addListener('backButton', () => {
+      if (window.history.state && window.history.state.depth) {
+        window.history.back();
+      } else {
+        CapApp.exitApp();
+      }
+    })
+      .then((h) => {
+        handle = h;
+      })
+      .catch(() => {
+        /* 웹에서는 backButton 미지원 — 무시 */
+      });
+
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      handle?.remove();
+    };
+  }, []);
+
+  // 편집 화면 열기 (히스토리 한 칸 쌓기)
+  function open(v: View) {
+    setView(v);
+    try {
+      window.history.pushState({ depth: 1 }, '');
+    } catch {
+      /* 무시 */
+    }
+  }
+
+  // 홈으로 (하단 back키와 동일하게 히스토리를 되돌린다)
+  function goHome() {
+    if (window.history.state && window.history.state.depth) window.history.back();
+    else setView({ kind: 'home' });
+  }
+
   function upsertTemplate(t: Template) {
     const next = { ...t, updatedAt: Date.now() };
     setTemplates((ts) => {
@@ -89,7 +139,7 @@ export default function App() {
   function removeTemplate(id: string) {
     setTemplates((ts) => ts.filter((x) => x.id !== id));
     repo?.deleteTemplate(id).catch(() => setError('삭제에 실패했습니다.'));
-    setView({ kind: 'home' });
+    goHome();
   }
 
   function upsertList(l: PackList) {
@@ -105,7 +155,7 @@ export default function App() {
   function removeList(id: string) {
     setLists((ls) => ls.filter((x) => x.id !== id));
     repo?.deleteList(id).catch(() => setError('삭제에 실패했습니다.'));
-    setView({ kind: 'home' });
+    goHome();
   }
 
   const currentTemplate = useMemo(
@@ -120,8 +170,8 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="brand" onClick={() => setView({ kind: 'home' })}>
-          🎒 준비물
+        <button className="brand" onClick={goHome}>
+          🦘 Kangaroo
         </button>
         <div className="auth">
           {firebaseEnabled ? (
@@ -165,8 +215,8 @@ export default function App() {
           <Home
             templates={templates}
             lists={lists}
-            onOpenTemplate={(id) => setView({ kind: 'template', id })}
-            onOpenList={(id) => setView({ kind: 'list', id })}
+            onOpenTemplate={(id) => open({ kind: 'template', id })}
+            onOpenList={(id) => open({ kind: 'list', id })}
             onCreateTemplate={upsertTemplate}
             onCreateList={upsertList}
           />
@@ -177,7 +227,6 @@ export default function App() {
             onChange={upsertTemplate}
             onCopyToTemplate={(target) => upsertTemplate(target)}
             onDelete={() => removeTemplate(currentTemplate.id)}
-            onBack={() => setView({ kind: 'home' })}
           />
         ) : view.kind === 'list' && currentList ? (
           <ListEditor
@@ -190,7 +239,6 @@ export default function App() {
             onChange={upsertList}
             onTemplateChange={upsertTemplate}
             onDelete={() => removeList(currentList.id)}
-            onBack={() => setView({ kind: 'home' })}
           />
         ) : (
           <p className="muted center">항목을 찾을 수 없습니다.</p>

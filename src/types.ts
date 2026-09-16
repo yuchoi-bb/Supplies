@@ -166,6 +166,74 @@ export function emptyList(name: string): PackList {
   };
 }
 
+// "마라톤"에 추가되는 3개 섹션(착용/대회용 작은가방/큰 가방). 시드와 "기본 항목 불러오기"에서 함께 쓴다.
+const MARATHON_EXTRA: [string, string[]][] = [
+  [
+    '착용',
+    [
+      '상의 바람막이 티 (아디다스 저지)',
+      '하의 긴바지 (나이키)',
+      '니플 반창고',
+      '배번 (태그)',
+      '팔토시',
+      '종아리 보호',
+      '테이핑',
+      '크록스',
+      '바셀린',
+      '심박계',
+      '워치',
+    ],
+  ],
+  [
+    '대회용 작은가방',
+    [
+      '썬글라스',
+      '러닝모자',
+      '우의',
+      '러닝화',
+      '장갑',
+      '러닝벨트',
+      '에너지젤',
+      '쥐약',
+      '리모컨',
+      '썬크림',
+      '이어폰',
+      '핫팩',
+      '물 500',
+      '커피',
+      '포카리',
+      '테이핑',
+      '테이핑가위',
+    ],
+  ],
+  [
+    '큰 가방 (대회마치고)',
+    [
+      '갈아입을 옷 (상의 반팔, 바지)',
+      '다른 모자',
+      '수건 (코인수건)',
+      '파스',
+      '데오드란트',
+      '비닐봉투 2개',
+      '타이레놀',
+      '씨잘 (진통제)',
+      '휴지',
+      '이불',
+      '탁센 (약 먹기)',
+      '발 마사지',
+    ],
+  ],
+];
+
+// "마라톤"에 이어붙일 3개 섹션을 새 id로 생성. (기존 마라톤에 항목을 불러올 때 사용)
+export function marathonExtraSections(): Section[] {
+  return MARATHON_EXTRA.map(([title, items]) => ({
+    id: uid(),
+    title,
+    items: items.map((n) => ({ id: uid(), name: n })),
+  }));
+}
+
 // 처음 사용할 때 보여줄 예시 데이터
 export function seedTemplates(): Template[] {
   const now = Date.now();
@@ -177,6 +245,7 @@ export function seedTemplates(): Template[] {
       title,
       items: items.map((n) => ({ id: uid(), name: n })),
     })),
+    subtopics: [],
     createdAt: now,
     updatedAt: now,
   });
@@ -185,6 +254,7 @@ export function seedTemplates(): Template[] {
       ['대회 필수', ['배번호(번호표)', '기록칩', '러닝화', '러닝복']],
       ['의류', ['양말', '모자', '바람막이', '여벌 옷']],
       ['보급·기타', ['에너지젤', '물통', '선크림', '바세린']],
+      ...MARATHON_EXTRA,
     ]),
     make('캠핑', [
       ['숙박', ['텐트', '침낭', '매트', '랜턴']],

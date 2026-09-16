@@ -9,7 +9,6 @@ interface Props {
   // 항목을 다른 기본 준비물로 복사할 때, 변경된 대상 템플릿을 저장한다.
   onCopyToTemplate: (target: Template) => void;
   onDelete: () => void;
-  onBack: () => void;
 }
 
 export function TemplateEditor({
@@ -18,7 +17,6 @@ export function TemplateEditor({
   onChange,
   onCopyToTemplate,
   onDelete,
-  onBack,
 }: Props) {
   const [newItemName, setNewItemName] = useState<Record<string, string>>({});
   const subtopics = template.subtopics ?? [];
@@ -256,9 +254,6 @@ export function TemplateEditor({
   return (
     <div>
       <div className="page-head">
-        <button className="btn btn-ghost" onClick={onBack}>
-          ← 뒤로
-        </button>
         <h2 className="page-title" onClick={rename} title="눌러서 이름 수정">
           {template.name} <span className="edit-hint">✏️</span>
         </h2>

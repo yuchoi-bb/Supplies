@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import type { PackList, Template } from '../types';
-import { duplicateTemplate, emptyList, emptyTemplate, listFromTemplate } from '../types';
+import {
+  duplicateTemplate,
+  emptyList,
+  emptyTemplate,
+  listFromTemplate,
+  marathonExtraSections,
+} from '../types';
 
 interface Props {
   templates: Template[];
@@ -54,6 +60,26 @@ export function Home({
     const t = duplicateTemplate(source, name.trim());
     onCreateTemplate(t);
     onOpenTemplate(t.id);
+  }
+
+  // "마라톤"에 착용/대회용 작은가방/큰 가방 묶음을 불러온다. (폰에 저장된 기존 마라톤에도 반영)
+  function loadMarathonExtras() {
+    const extra = marathonExtraSections();
+    const existing = templates.find((t) => t.name === '마라톤');
+    if (existing) {
+      const have = new Set(existing.sections.map((s) => s.title));
+      const toAdd = extra.filter((s) => !have.has(s.title));
+      if (toAdd.length === 0) {
+        alert('이미 최신 마라톤 항목(착용·대회용 작은가방·큰 가방)이 들어 있어요.');
+        return;
+      }
+      onCreateTemplate({ ...existing, sections: [...existing.sections, ...toAdd] });
+      onOpenTemplate(existing.id);
+    } else {
+      const t = emptyTemplate('마라톤');
+      onCreateTemplate({ ...t, sections: extra });
+      onOpenTemplate(t.id);
+    }
   }
 
   function progress(l: PackList): { done: number; total: number } {
@@ -158,6 +184,13 @@ export function Home({
             );
           })}
         </ul>
+        <button
+          className="btn btn-wide"
+          onClick={loadMarathonExtras}
+          title="마라톤에 착용·대회용 작은가방·큰 가방 묶음을 넣어요"
+        >
+          📥 기본 마라톤 항목 불러오기 (착용·작은가방·큰가방)
+        </button>
       </section>
     </div>
   );
