@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { PackList, Template } from '../types';
+import { useRef, useState, type ChangeEvent } from 'react';
+import type { AppData, PackList, Template } from '../types';
 import {
   duplicateTemplate,
   emptyList,
@@ -7,6 +7,7 @@ import {
   listFromTemplate,
   marathonExtraSections,
 } from '../types';
+import { exportBackup, parseBackup } from '../backup';
 
 interface Props {
   templates: Template[];
@@ -15,6 +16,7 @@ interface Props {
   onOpenList: (id: string) => void;
   onCreateTemplate: (t: Template) => void;
   onCreateList: (l: PackList) => void;
+  onApplyImport: (data: AppData, replace: boolean) => void;
 }
 
 export function Home({
@@ -24,10 +26,40 @@ export function Home({
   onOpenList,
   onCreateTemplate,
   onCreateList,
+  onApplyImport,
 }: Props) {
   const [creatingList, setCreatingList] = useState(false);
   const [listName, setListName] = useState('');
   const [baseTemplateId, setBaseTemplateId] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function exportNow() {
+    try {
+      await exportBackup({ templates, lists });
+    } catch {
+      alert('백업 내보내기에 실패했습니다.');
+    }
+  }
+
+  function pickImportFile() {
+    fileRef.current?.click();
+  }
+
+  async function onFileChosen(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = parseBackup(text);
+      const replace = confirm(
+        `백업에 준비물 ${data.lists.length}개, 기본 준비물 ${data.templates.length}개가 있어요.\n\n확인=기존을 모두 지우고 교체\n취소=기존에 합치기`
+      );
+      onApplyImport(data, replace);
+    } catch {
+      alert('백업 파일을 읽지 못했습니다. 올바른 백업(JSON)인지 확인해 주세요.');
+    }
+  }
 
   function createList() {
     const name = listName.trim();
@@ -191,6 +223,32 @@ export function Home({
         >
           📥 기본 마라톤 항목 불러오기 (착용·작은가방·큰가방)
         </button>
+      </section>
+
+      <section className="block">
+        <div className="block-head">
+          <h2>백업 · 동기화</h2>
+        </div>
+        <div className="backup-row">
+          <button className="btn" onClick={exportNow}>
+            ⬆️ 백업 내보내기
+          </button>
+          <button className="btn" onClick={pickImportFile}>
+            ⬇️ 백업 가져오기
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={onFileChosen}
+          />
+        </div>
+        <p className="muted">
+          내보내기: 준비물 전체를 파일로 저장해요(안드로이드는 공유로 Google Drive에 저장 가능). 다른
+          폰에서 "가져오기"로 그대로 불러올 수 있어요. Google 로그인을 켜면 여러 기기가 자동으로
+          실시간 동기화됩니다.
+        </p>
       </section>
     </div>
   );

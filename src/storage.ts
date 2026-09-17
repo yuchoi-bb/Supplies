@@ -3,6 +3,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  onSnapshot,
   setDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -14,6 +15,10 @@ export interface Repo {
   deleteTemplate(id: string): Promise<void>;
   saveList(l: PackList): Promise<void>;
   deleteList(id: string): Promise<void>;
+  // 전체 교체 (백업 복원용)
+  replaceAll(data: AppData): Promise<void>;
+  // 실시간 구독 (다기기 동기화). 지원하지 않으면 생략.
+  subscribe?(onData: (data: AppData) => void): () => void;
 }
 
 const LOCAL_KEY = 'supplies-data-v1';
@@ -66,6 +71,10 @@ export class LocalRepo implements Repo {
     this.write(data);
   }
 
+  async replaceAll(data: AppData): Promise<void> {
+    this.write({ templates: data.templates, lists: data.lists });
+  }
+
   hasData(): boolean {
     const d = this.read();
     return d.templates.length > 0 || d.lists.length > 0;
@@ -112,5 +121,46 @@ export class CloudRepo implements Repo {
 
   async deleteList(id: string): Promise<void> {
     await deleteDoc(doc(this.col('lists'), id));
+  }
+
+  // 기존 문서를 모두 지우고 백업 데이터로 교체
+  async replaceAll(data: AppData): Promise<void> {
+    const [tSnap, lSnap] = await Promise.all([
+      getDocs(this.col('templates')),
+      getDocs(this.col('lists')),
+    ]);
+    await Promise.all([
+      ...tSnap.docs.map((d) => deleteDoc(d.ref)),
+      ...lSnap.docs.map((d) => deleteDoc(d.ref)),
+    ]);
+    await Promise.all([
+      ...data.templates.map((t) => setDoc(doc(this.col('templates'), t.id), t)),
+      ...data.lists.map((l) => setDoc(doc(this.col('lists'), l.id), l)),
+    ]);
+  }
+
+  // 실시간 구독: 두 컬렉션의 변경을 합쳐 최신 데이터를 전달한다. (다기기 동기화)
+  subscribe(onData: (data: AppData) => void): () => void {
+    let templates: Template[] = [];
+    let lists: PackList[] = [];
+    let hasT = false;
+    let hasL = false;
+    const emit = () => {
+      if (hasT && hasL) onData({ templates, lists });
+    };
+    const unsubT = onSnapshot(this.col('templates'), (snap) => {
+      templates = snap.docs.map((d) => d.data() as Template).sort((a, b) => a.createdAt - b.createdAt);
+      hasT = true;
+      emit();
+    });
+    const unsubL = onSnapshot(this.col('lists'), (snap) => {
+      lists = snap.docs.map((d) => d.data() as PackList).sort((a, b) => b.createdAt - a.createdAt);
+      hasL = true;
+      emit();
+    });
+    return () => {
+      unsubT();
+      unsubL();
+    };
   }
 }

@@ -85,6 +85,34 @@ body {
   cursor: pointer;
 }
 
+.banner-update {
+  background: #fff4e5;
+  color: #8a4b00;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.backup-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.backup-row .btn {
+  flex: 1;
+  min-width: 140px;
+}
+
 .content {
   padding: 16px;
   flex: 1;

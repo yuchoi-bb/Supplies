@@ -4,7 +4,8 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, firebaseEnabled, signInWithGoogle, signOut } from './firebase';
 import { CloudRepo, LocalRepo, type Repo } from './storage';
 import type { AppData, PackList, Template } from './types';
-import { seedTemplates } from './types';
+import { seedTemplates, uid } from './types';
+import { checkForUpdate, isNative, openDownload, type UpdateInfo } from './update';
 import { Home } from './views/Home';
 import { TemplateEditor } from './views/TemplateEditor';
 import { ListEditor } from './views/ListEditor';
@@ -24,6 +25,7 @@ export default function App() {
   const [view, setView] = useState<View>({ kind: 'home' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
     async function boot(r: Repo) {
@@ -110,6 +112,28 @@ export default function App() {
     };
   }, []);
 
+  // 앱 시작 시 새 버전(APK) 확인 (네이티브 앱에서만)
+  useEffect(() => {
+    if (!isNative()) return;
+    checkForUpdate()
+      .then((u) => {
+        if (u) setUpdateInfo(u);
+      })
+      .catch(() => {
+        /* 무시 */
+      });
+  }, []);
+
+  // Firestore 실시간 구독으로 다기기 자동 동기화
+  useEffect(() => {
+    if (!repo || !repo.subscribe) return;
+    const unsub = repo.subscribe((data) => {
+      setTemplates(data.templates);
+      setLists(data.lists);
+    });
+    return unsub;
+  }, [repo]);
+
   // 편집 화면 열기 (히스토리 한 칸 쌓기)
   function open(v: View) {
     setView(v);
@@ -158,6 +182,30 @@ export default function App() {
     goHome();
   }
 
+  // 백업 가져오기: replace=true면 전체 교체, false면 기존에 합치기(새 id 부여).
+  async function applyImport(data: AppData, replace: boolean) {
+    try {
+      if (replace) {
+        await repo?.replaceAll(data);
+        setTemplates(data.templates);
+        setLists(data.lists);
+      } else {
+        const t2 = data.templates.map((t) => ({ ...t, id: uid() }));
+        const l2 = data.lists.map((l) => ({ ...l, id: uid() }));
+        setTemplates((prev) => [...prev, ...t2]);
+        setLists((prev) => [...l2, ...prev]);
+        await Promise.all([
+          ...t2.map((t) => repo?.saveTemplate(t) ?? Promise.resolve()),
+          ...l2.map((l) => repo?.saveList(l) ?? Promise.resolve()),
+        ]);
+      }
+      setView({ kind: 'home' });
+      alert('백업을 불러왔어요.');
+    } catch {
+      setError('백업을 불러오지 못했습니다.');
+    }
+  }
+
   const currentTemplate = useMemo(
     () => (view.kind === 'template' ? templates.find((t) => t.id === view.id) : undefined),
     [view, templates]
@@ -196,6 +244,19 @@ export default function App() {
         </div>
       </header>
 
+      {updateInfo && (
+        <div className="banner banner-update">
+          <span>새 버전(v{updateInfo.version})이 나왔어요.</span>
+          <span className="banner-actions">
+            <button className="btn btn-primary btn-sm" onClick={() => openDownload(updateInfo.url)}>
+              다운로드·설치
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setUpdateInfo(null)}>
+              나중에
+            </button>
+          </span>
+        </div>
+      )}
       {firebaseEnabled && !user && !loading && (
         <div className="banner">
           Google 계정으로 로그인하면 준비물이 계정에 저장되어, 앱을 다시 설치하거나 다른 기기에서도
@@ -219,6 +280,7 @@ export default function App() {
             onOpenList={(id) => open({ kind: 'list', id })}
             onCreateTemplate={upsertTemplate}
             onCreateList={upsertList}
+            onApplyImport={applyImport}
           />
         ) : view.kind === 'template' && currentTemplate ? (
           <TemplateEditor

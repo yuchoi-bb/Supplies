@@ -34,6 +34,8 @@ jobs:
       - name: Build web assets
         run: npm run build
         env:
+          # 앱 내 자동 업데이트가 비교할 현재 버전 번호 (릴리스 android-v<run_number>와 일치)
+          VITE_APP_VERSION: ${{ github.run_number }}
           # 여기에 Firebase 시크릿을 등록하면 Google 저장이 켜진다. 없으면 기기 저장 모드.
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
