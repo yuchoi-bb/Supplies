@@ -108,6 +108,53 @@ body {
   margin-bottom: 8px;
 }
 
+.base-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.base-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--card);
+}
+
+.base-pick-row.selected {
+  border-color: var(--primary);
+  background: #eef3fd;
+}
+
+.base-pick-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.base-pick-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.base-pick-order {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 999px;
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .backup-row .btn {
   flex: 1;
   min-width: 140px;

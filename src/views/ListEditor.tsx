@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import type { CheckItem, CheckSection, PackList, Section, Template } from '../types';
-import { sectionLabel, uid } from '../types';
+import { checkSubtopicFromTemplate, sectionLabel, uid } from '../types';
 
 interface Props {
   list: PackList;
   sourceTemplate?: Template;
+  // 모든 기본 준비물 (블록 추가·원본 연결용)
+  templates: Template[];
   onChange: (l: PackList) => void;
   onTemplateChange: (t: Template) => void;
   onDelete: () => void;
@@ -13,6 +15,7 @@ interface Props {
 export function ListEditor({
   list,
   sourceTemplate,
+  templates,
   onChange,
   onTemplateChange,
   onDelete,
@@ -92,7 +95,14 @@ export function ListEditor({
     );
   }
 
-  // 항목 추가. 최상위 묶음에서 "기본 준비물에도 추가"가 켜져 있으면 원본 템플릿에도 같이 추가한다.
+  // 이 묶음의 원본 기본 준비물: 최상위는 준비물의 원본, 블록은 블록을 만든 기본 준비물
+  function targetTemplate(subId?: string): Template | undefined {
+    if (!subId) return sourceTemplate;
+    const st = subtopics.find((x) => x.id === subId);
+    return st?.templateId ? templates.find((t) => t.id === st.templateId) : undefined;
+  }
+
+  // 항목 추가. "기본 준비물에도 추가"가 켜져 있으면 해당 원본 기본 준비물에도 같이 추가한다.
   function addItem(subId: string | undefined, s: CheckSection) {
     const name = (newItemName[s.id] || '').trim();
     if (!name) return;
@@ -104,9 +114,28 @@ export function ListEditor({
     );
     setNewItemName((m) => ({ ...m, [s.id]: '' }));
 
-    if (!subId && alsoTemplate[s.id] && sourceTemplate) {
-      addToTemplate(sourceTemplate, s.title, name);
+    const target = targetTemplate(subId);
+    if (alsoTemplate[s.id] && target) {
+      addToTemplate(target, s.title, name);
     }
+  }
+
+  // 아직 이 준비물에 들어있지 않은 기본 준비물만 "더 넣기" 후보로
+  const usedTemplateIds = new Set(
+    [list.templateId, ...subtopics.map((st) => st.templateId)].filter(Boolean)
+  );
+  const availableTemplates = templates.filter((t) => !usedTemplateIds.has(t.id));
+
+  // 기본 준비물을 이 준비물에 블록으로 더 넣는다.
+  function addBaseTemplate(templateId: string) {
+    const t = templates.find((x) => x.id === templateId);
+    if (!t) return;
+    const names = list.templateName ? `${list.templateName}, ${t.name}` : t.name;
+    onChange({
+      ...list,
+      templateName: names,
+      subtopics: [...subtopics, checkSubtopicFromTemplate(t)],
+    });
   }
 
   function addToTemplate(template: Template, sectionTitle: string, name: string) {
@@ -148,8 +177,16 @@ export function ListEditor({
   function deleteSubtopic(subId: string) {
     const st = subtopics.find((x) => x.id === subId);
     if (!st) return;
-    if (!confirm(`하위 주제 "${st.name}"을(를) 통째로 삭제할까요?`)) return;
-    onChange({ ...list, subtopics: subtopics.filter((x) => x.id !== subId) });
+    if (!confirm(`"${st.name}" 블록을 통째로 삭제할까요?`)) return;
+    // 기본 준비물로 넣은 블록이면 목록 태그(기본: …)에서도 이름을 뺀다.
+    let templateName = list.templateName;
+    if (st.templateId && templateName) {
+      const names = templateName.split(', ');
+      const i = names.indexOf(st.name);
+      if (i >= 0) names.splice(i, 1);
+      templateName = names.length ? names.join(', ') : null;
+    }
+    onChange({ ...list, templateName, subtopics: subtopics.filter((x) => x.id !== subId) });
   }
 
   function resetChecks() {
@@ -224,14 +261,14 @@ export function ListEditor({
             추가
           </button>
         </div>
-        {!subId && sourceTemplate && (
+        {targetTemplate(subId) && (
           <label className="also-template">
             <input
               type="checkbox"
               checked={!!alsoTemplate[s.id]}
               onChange={(e) => setAlsoTemplate((m) => ({ ...m, [s.id]: e.target.checked }))}
             />
-            기본 준비물 "{sourceTemplate.name}"에도 함께 추가
+            기본 준비물 "{targetTemplate(subId)!.name}"에도 함께 추가
           </label>
         )}
       </section>
@@ -268,10 +305,8 @@ export function ListEditor({
       </div>
       {list.templateName && (
         <p className="muted">
-          기본 준비물 "{list.templateName}"에서 만들었어요.
-          {sourceTemplate
-            ? ' 항목을 추가할 때 기본 준비물에도 함께 추가할 수 있어요.'
-            : ' (원본 기본 준비물은 삭제되었어요.)'}
+          기본 준비물: {list.templateName}. 항목을 추가할 때 원래 기본 준비물에도 함께 추가할 수
+          있어요.
         </p>
       )}
 
@@ -294,7 +329,7 @@ export function ListEditor({
                 </span>
               </h3>
               <button className="btn btn-ghost btn-sm" onClick={() => deleteSubtopic(st.id)}>
-                하위 주제 삭제
+                블록 삭제
               </button>
             </div>
             {st.sections.map((s) => sectionCard(s, st.id))}
@@ -304,6 +339,26 @@ export function ListEditor({
           </div>
         );
       })}
+
+      {availableTemplates.length > 0 && (
+        <div className="add-subtopic">
+          <select
+            className="input"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) addBaseTemplate(e.target.value);
+              e.target.value = '';
+            }}
+          >
+            <option value="">+ 기본 준비물 더 넣기…</option>
+            {availableTemplates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }

@@ -301,6 +301,7 @@ export default function App() {
             onChange={upsertList}
             onTemplateChange={upsertTemplate}
             onDelete={() => removeList(currentList.id)}
+            templates={templates}
           />
         ) : (
           <p className="muted center">항목을 찾을 수 없습니다.</p>

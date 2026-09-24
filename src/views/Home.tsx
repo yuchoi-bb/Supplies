@@ -2,9 +2,9 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import type { AppData, PackList, Template } from '../types';
 import {
   duplicateTemplate,
-  emptyList,
   emptyTemplate,
-  listFromTemplate,
+  listFromTemplates,
+  listProgress,
   marathonExtraSections,
 } from '../types';
 import { exportBackup, parseBackup } from '../backup';
@@ -30,7 +30,7 @@ export function Home({
 }: Props) {
   const [creatingList, setCreatingList] = useState(false);
   const [listName, setListName] = useState('');
-  const [baseTemplateId, setBaseTemplateId] = useState('');
+  const [baseTemplateIds, setBaseTemplateIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function exportNow() {
@@ -61,14 +61,21 @@ export function Home({
     }
   }
 
+  function toggleBase(id: string) {
+    setBaseTemplateIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  }
+
+  // 선택한 기본 준비물들(선택 순서대로)로 준비물을 만든다. 0개면 빈 준비물.
   function createList() {
     const name = listName.trim();
     if (!name) return;
-    const base = templates.find((t) => t.id === baseTemplateId);
-    const l = base ? listFromTemplate(base, name) : emptyList(name);
+    const bases = baseTemplateIds
+      .map((id) => templates.find((t) => t.id === id))
+      .filter((t): t is Template => !!t);
+    const l = listFromTemplates(bases, name);
     onCreateList(l);
     setListName('');
-    setBaseTemplateId('');
+    setBaseTemplateIds([]);
     setCreatingList(false);
     onOpenList(l.id);
   }
@@ -114,17 +121,6 @@ export function Home({
     }
   }
 
-  function progress(l: PackList): { done: number; total: number } {
-    let done = 0;
-    let total = 0;
-    for (const s of l.sections)
-      for (const it of s.items) {
-        total++;
-        if (it.checked) done++;
-      }
-    return { done, total };
-  }
-
   return (
     <div>
       <section className="block">
@@ -138,26 +134,39 @@ export function Home({
           <div className="card form-card">
             <input
               className="input"
-              placeholder="이름 (예: 서울마라톤 준비물)"
+              placeholder="이름 (예: 8월 호주여행)"
               value={listName}
               onChange={(e) => setListName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && createList()}
               autoFocus
             />
-            <select
-              className="input"
-              value={baseTemplateId}
-              onChange={(e) => setBaseTemplateId(e.target.value)}
-            >
-              <option value="">기본 준비물 없이 시작</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  기본: {t.name}
-                </option>
-              ))}
-            </select>
+            <div className="base-pick">
+              <span className="muted">
+                기본 준비물 선택 (여러 개 가능 · 선택 안 하면 빈 준비물)
+              </span>
+              {templates.map((t) => {
+                const order = baseTemplateIds.indexOf(t.id);
+                return (
+                  <label
+                    key={t.id}
+                    className={'base-pick-row' + (order >= 0 ? ' selected' : '')}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={order >= 0}
+                      onChange={() => toggleBase(t.id)}
+                    />
+                    <span className="base-pick-name">{t.name}</span>
+                    {order >= 0 && baseTemplateIds.length > 1 && (
+                      <span className="base-pick-order">{order + 1}</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
             <button className="btn btn-primary" onClick={createList} disabled={!listName.trim()}>
               만들기
+              {baseTemplateIds.length > 1 ? ` (기본 준비물 ${baseTemplateIds.length}개)` : ''}
             </button>
           </div>
         )}
@@ -168,7 +177,7 @@ export function Home({
         )}
         <ul className="cards">
           {lists.map((l) => {
-            const p = progress(l);
+            const p = listProgress(l);
             return (
               <li key={l.id}>
                 <button className="card row-card" onClick={() => onOpenList(l.id)}>

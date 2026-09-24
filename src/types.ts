@@ -47,13 +47,18 @@ export interface CheckSubTopic {
   id: string;
   name: string;
   sections: CheckSection[];
+  // 이 블록을 만든 기본 준비물 (항목 추가 시 원본에도 함께 추가하는 데 사용)
+  templateId?: string;
 }
 
 // 실제 준비물 (예: 서울마라톤 준비물 — "마라톤" 템플릿에서 생성)
+// 기본 준비물을 여러 개 골라 만들면 각 기본 준비물이 하위 주제 블록으로 들어간다.
 export interface PackList {
   id: string;
   name: string;
+  // 기본 준비물 1개로 만든 경우의 원본 (최상위 묶음과 연결)
   templateId: string | null;
+  // 목록 표시용: 사용한 기본 준비물 이름들 (여러 개면 ", "로 연결)
   templateName: string | null;
   sections: CheckSection[];
   subtopics?: CheckSubTopic[];
@@ -120,6 +125,49 @@ export function listFromTemplate(template: Template, name: string): PackList {
     createdAt: now,
     updatedAt: now,
   };
+}
+
+// 기본 준비물 하나를 준비물 안의 체크리스트 블록(하위 주제)으로 변환.
+// 원본의 하위 주제는 대제목으로 펼쳐 한 블록에 담는다.
+export function checkSubtopicFromTemplate(source: Template): CheckSubTopic {
+  const nestedSections = (source.subtopics ?? []).flatMap((st) => st.sections);
+  return {
+    id: uid(),
+    name: source.name,
+    templateId: source.id,
+    sections: toCheckSections([...source.sections, ...nestedSections]),
+  };
+}
+
+// 기본 준비물 여러 개로 준비물을 만든다.
+// 1개면 기존처럼 그대로 펼치고, 2개 이상이면 각각을 블록(하위 주제)으로 넣는다.
+export function listFromTemplates(templates: Template[], name: string): PackList {
+  if (templates.length === 1) return listFromTemplate(templates[0], name);
+  if (templates.length === 0) return emptyList(name);
+  const now = Date.now();
+  return {
+    id: uid(),
+    name,
+    templateId: null,
+    templateName: templates.map((t) => t.name).join(', '),
+    sections: [],
+    subtopics: templates.map(checkSubtopicFromTemplate),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+// 준비물 전체 진행률 (최상위 묶음 + 모든 블록)
+export function listProgress(l: PackList): { done: number; total: number } {
+  let done = 0;
+  let total = 0;
+  const all = [...l.sections, ...(l.subtopics ?? []).flatMap((st) => st.sections)];
+  for (const s of all)
+    for (const it of s.items) {
+      total++;
+      if (it.checked) done++;
+    }
+  return { done, total };
 }
 
 export function emptyTemplate(name: string): Template {
