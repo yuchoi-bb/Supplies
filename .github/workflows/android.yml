@@ -48,6 +48,8 @@ jobs:
         run: npx cap sync android
 
       - name: Build debug APK
+        env:
+          VERSION_CODE: ${{ github.run_number }}
         run: |
           cd android
           chmod +x ./gradlew

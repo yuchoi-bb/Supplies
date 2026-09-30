@@ -7,8 +7,9 @@ android {
         applicationId "com.supplies.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI에서 빌드 번호(run_number)를 넘겨 매 빌드마다 버전이 올라가게 한다.
+        versionCode (System.getenv("VERSION_CODE") ?: "1").toInteger()
+        versionName "1." + (System.getenv("VERSION_CODE") ?: "0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,21 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // 모든 빌드를 같은 키로 서명한다. (빌드마다 키가 바뀌면 덮어쓰기 설치가 거부됨)
+    signingConfigs {
+        kangaroo {
+            storeFile file('kangaroo.keystore')
+            storePassword 'kangaroo-app'
+            keyAlias 'kangaroo'
+            keyPassword 'kangaroo-app'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.kangaroo
+        }
         release {
+            signingConfig signingConfigs.kangaroo
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
