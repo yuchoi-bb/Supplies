@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { CheckItem, CheckSection, PackList, Section, Template } from '../types';
 import { checkSubtopicFromTemplate, sectionLabel, uid } from '../types';
 
+const ONLY_UNCHECKED_KEY = 'kangaroo-only-unchecked';
+
 interface Props {
   list: PackList;
   sourceTemplate?: Template;
@@ -21,6 +23,24 @@ export function ListEditor({
   onDelete,
 }: Props) {
   const [newItemName, setNewItemName] = useState<Record<string, string>>({});
+  // "안 챙긴 것만 보기" (체크 안 한 항목만 표시). 다음에 열어도 유지되도록 기억한다.
+  const [onlyUnchecked, setOnlyUnchecked] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(ONLY_UNCHECKED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  function toggleOnlyUnchecked() {
+    setOnlyUnchecked((v) => {
+      try {
+        localStorage.setItem(ONLY_UNCHECKED_KEY, v ? '0' : '1');
+      } catch {
+        /* 무시 */
+      }
+      return !v;
+    });
+  }
   // 섹션별 "기본 준비물에도 추가" 체크 상태
   const [alsoTemplate, setAlsoTemplate] = useState<Record<string, boolean>>({});
   const subtopics = list.subtopics ?? [];
@@ -202,6 +222,31 @@ export function ListEditor({
 
   function sectionCard(s: CheckSection, subId?: string) {
     const container = getContainer(subId);
+
+    // 안 챙긴 것만 보기: 남은 항목만, 편집 버튼 없이 체크만 할 수 있게
+    if (onlyUnchecked) {
+      const remaining = s.items.filter((it) => !it.checked);
+      if (remaining.length === 0) return null;
+      return (
+        <section className="card section-card" key={s.id}>
+          <div className="section-head">
+            <h3 className={s.title.trim() === '' ? 'muted' : ''}>{sectionLabel(s.title)}</h3>
+            <span className="muted">{remaining.length}개 남음</span>
+          </div>
+          <ul className="items">
+            {remaining.map((it) => (
+              <li className="item-row" key={it.id}>
+                <label className="check-label">
+                  <input type="checkbox" checked={false} onChange={() => toggle(subId, s, it)} />
+                  <span>{it.name}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    }
+
     return (
       <section className="card section-card" key={s.id}>
         <div className="section-head">
@@ -303,7 +348,17 @@ export function ListEditor({
           체크 초기화
         </button>
       </div>
-      {list.templateName && (
+      <button
+        className={'btn filter-toggle' + (onlyUnchecked ? ' active' : '')}
+        onClick={toggleOnlyUnchecked}
+        aria-pressed={onlyUnchecked}
+      >
+        {onlyUnchecked ? '✓ 안 챙긴 것만 보는 중' : '👀 안 챙긴 것만 보기'} ({total - done})
+      </button>
+      {onlyUnchecked && total > 0 && done === total && (
+        <p className="all-done">🎉 모두 챙겼어요!</p>
+      )}
+      {!onlyUnchecked && list.templateName && (
         <p className="muted">
           기본 준비물: {list.templateName}. 항목을 추가할 때 원래 기본 준비물에도 함께 추가할 수
           있어요.
@@ -312,35 +367,47 @@ export function ListEditor({
 
       {list.sections.map((s) => sectionCard(s))}
 
-      <button className="btn btn-wide" onClick={() => addSection()}>
-        + 대제목 추가
-      </button>
+      {!onlyUnchecked && (
+        <button className="btn btn-wide" onClick={() => addSection()}>
+          + 대제목 추가
+        </button>
+      )}
 
       {subtopics.map((st) => {
         const stTotal = countAll(st.sections);
         const stDone = countDone(st.sections);
+        if (onlyUnchecked && stTotal === 0) return null;
+        const stAllDone = stTotal > 0 && stDone === stTotal;
         return (
           <div className="subtopic-card" key={st.id}>
             <div className="subtopic-head">
               <h3 className="subtopic-title">
                 📦 {st.name}
-                <span className={'progress' + (stTotal > 0 && stDone === stTotal ? ' done' : '')}>
+                <span className={'progress' + (stAllDone ? ' done' : '')}>
                   {stDone}/{stTotal}
                 </span>
               </h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => deleteSubtopic(st.id)}>
-                블록 삭제
-              </button>
+              {!onlyUnchecked && (
+                <button className="btn btn-ghost btn-sm" onClick={() => deleteSubtopic(st.id)}>
+                  블록 삭제
+                </button>
+              )}
             </div>
-            {st.sections.map((s) => sectionCard(s, st.id))}
-            <button className="btn btn-wide" onClick={() => addSection(st.id)}>
-              + 대제목 추가
-            </button>
+            {onlyUnchecked && stAllDone ? (
+              <p className="muted block-done">✓ 모두 챙겼어요</p>
+            ) : (
+              st.sections.map((s) => sectionCard(s, st.id))
+            )}
+            {!onlyUnchecked && (
+              <button className="btn btn-wide" onClick={() => addSection(st.id)}>
+                + 대제목 추가
+              </button>
+            )}
           </div>
         );
       })}
 
-      {availableTemplates.length > 0 && (
+      {!onlyUnchecked && availableTemplates.length > 0 && (
         <div className="add-subtopic">
           <select
             className="input"
