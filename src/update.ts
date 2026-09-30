@@ -1,5 +1,17 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+
+// 네이티브 플러그인 (android/.../ApkInstallerPlugin.java)
+interface ApkInstallerPlugin {
+  canInstall(): Promise<{ allowed: boolean }>;
+  openInstallSettings(): Promise<void>;
+  downloadAndInstall(options: { url: string; fileName: string }): Promise<void>;
+  addListener(
+    event: 'progress',
+    cb: (data: { percent: number }) => void
+  ): Promise<PluginListenerHandle>;
+}
+const ApkInstaller = registerPlugin<ApkInstallerPlugin>('ApkInstaller');
 
 const REPO = 'yuchoi-bb/Supplies';
 
@@ -47,5 +59,45 @@ export async function openDownload(url: string): Promise<void> {
     await Browser.open({ url });
   } else {
     window.open(url, '_blank');
+  }
+}
+
+export type InstallResult = 'installing' | 'need-permission' | 'fallback';
+
+// 앱이 직접 APK를 받아 설치 화면을 띄운다. (진행률은 onProgress로 0~100)
+// 설치 권한이 없으면 권한 설정 화면을 열고 'need-permission'을 돌려준다.
+// 네이티브 다운로드가 실패하면 브라우저 다운로드로 대신한다.
+export async function downloadAndInstall(
+  info: UpdateInfo,
+  onProgress: (percent: number) => void
+): Promise<InstallResult> {
+  if (!isNative()) {
+    window.open(info.url, '_blank');
+    return 'fallback';
+  }
+  try {
+    const { allowed } = await ApkInstaller.canInstall();
+    if (!allowed) {
+      await ApkInstaller.openInstallSettings();
+      return 'need-permission';
+    }
+    const handle = await ApkInstaller.addListener('progress', (d) => onProgress(d.percent));
+    try {
+      await ApkInstaller.downloadAndInstall({
+        url: info.url,
+        fileName: `kangaroo-v${info.version}.apk`,
+      });
+    } finally {
+      handle.remove();
+    }
+    return 'installing';
+  } catch (e) {
+    const code = (e as { code?: string })?.code;
+    if (code === 'NEED_PERMISSION') {
+      await ApkInstaller.openInstallSettings();
+      return 'need-permission';
+    }
+    await openDownload(info.url);
+    return 'fallback';
   }
 }

@@ -5,7 +5,7 @@ import { auth, firebaseEnabled, signInWithGoogle, signOut } from './firebase';
 import { CloudRepo, LocalRepo, type Repo } from './storage';
 import type { AppData, PackList, Template } from './types';
 import { seedTemplates, uid } from './types';
-import { checkForUpdate, isNative, openDownload, type UpdateInfo } from './update';
+import { checkForUpdate, downloadAndInstall, isNative, type UpdateInfo } from './update';
 import { Home } from './views/Home';
 import { TemplateEditor } from './views/TemplateEditor';
 import { ListEditor } from './views/ListEditor';
@@ -26,6 +26,22 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  // 업데이트 다운로드 진행률 (null이면 다운로드 중 아님)
+  const [updatePercent, setUpdatePercent] = useState<number | null>(null);
+  const [updateNote, setUpdateNote] = useState<string | null>(null);
+
+  async function startUpdate() {
+    if (!updateInfo) return;
+    setUpdateNote(null);
+    setUpdatePercent(0);
+    const result = await downloadAndInstall(updateInfo, (p) => setUpdatePercent(p));
+    setUpdatePercent(null);
+    if (result === 'need-permission') {
+      setUpdateNote('설정에서 "이 출처 허용"을 켠 뒤 돌아와 다시 눌러 주세요.');
+    } else if (result === 'installing') {
+      setUpdateNote('설치 화면에서 "업데이트"를 눌러 주세요.');
+    }
+  }
 
   useEffect(() => {
     async function boot(r: Repo) {
@@ -246,15 +262,26 @@ export default function App() {
 
       {updateInfo && (
         <div className="banner banner-update">
-          <span>새 버전(v{updateInfo.version})이 나왔어요.</span>
-          <span className="banner-actions">
-            <button className="btn btn-primary btn-sm" onClick={() => openDownload(updateInfo.url)}>
-              다운로드·설치
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setUpdateInfo(null)}>
-              나중에
-            </button>
+          <span>
+            {updatePercent !== null
+              ? `새 버전(v${updateInfo.version}) 다운로드 중… ${updatePercent}%`
+              : updateNote ?? `새 버전(v${updateInfo.version})이 나왔어요.`}
           </span>
+          {updatePercent === null && (
+            <span className="banner-actions">
+              <button className="btn btn-primary btn-sm" onClick={startUpdate}>
+                다운로드·설치
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setUpdateInfo(null)}>
+                나중에
+              </button>
+            </span>
+          )}
+          {updatePercent !== null && (
+            <div className="update-progress">
+              <div className="update-progress-fill" style={{ width: `${updatePercent}%` }} />
+            </div>
+          )}
         </div>
       )}
       {firebaseEnabled && !user && !loading && (
