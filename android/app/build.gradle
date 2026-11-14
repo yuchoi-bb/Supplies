@@ -4,7 +4,8 @@ android {
     namespace "com.supplies.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.supplies.app"
+        // Firebase(up-wishlist)에 등록된 Android 앱 "kangaroo"와 같은 패키지 이름
+        applicationId "com.kangaroo.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI에서 빌드 번호(run_number)를 넘겨 매 빌드마다 버전이 올라가게 한다.

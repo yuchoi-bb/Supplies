@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Kangaroo</string>
     <string name="title_activity_main">Kangaroo</string>
-    <string name="package_name">com.supplies.app</string>
-    <string name="custom_url_scheme">com.supplies.app</string>
+    <string name="package_name">com.kangaroo.app</string>
+    <string name="custom_url_scheme">com.kangaroo.app</string>
 </resources>

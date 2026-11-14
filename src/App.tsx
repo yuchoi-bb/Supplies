@@ -308,7 +308,11 @@ export default function App() {
             ) : (
               <button
                 className="btn btn-primary"
-                onClick={() => signInWithGoogle().catch(() => setError('로그인에 실패했습니다.'))}
+                onClick={() =>
+                  signInWithGoogle().catch((e) =>
+                    setError(`로그인에 실패했습니다. (${e?.code || e?.message || e})`)
+                  )
+                }
               >
                 Google 로그인
               </button>
