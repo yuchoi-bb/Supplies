@@ -89,7 +89,8 @@ Firestore 경로: `users/{uid}/templates/{templateId}`, `users/{uid}/lists/{list
 같은 Firebase 프로젝트를 다른 앱(예: wishlist)과 함께 쓴다면, 그 앱은 `users/{uid}/wishlist/...`처럼
 **다른 하위 컬렉션 이름**을 써야 데이터가 섞이지 않습니다.
 
-설정값 넣는 곳:
+설정값: Firebase 프로젝트 `up-wishlist`의 웹 앱 "Kangaroo Supplies Web" 값이 `src/firebase.ts`에 기본값으로
+들어 있습니다(웹에 공개로 들어가는 식별값). 아래 환경변수를 주면 그 값이 우선합니다.
 - 로컬 개발: `.env.local` (`.env.example` 참고)
 - 웹(GitHub Pages)·안드로이드 APK 빌드: 저장소 Settings → Secrets and variables → Actions에 `VITE_FIREBASE_*` 6개.
   두 워크플로(`deploy.yml`, `android.yml`)가 이미 이 값을 빌드에 넣도록 되어 있습니다.
