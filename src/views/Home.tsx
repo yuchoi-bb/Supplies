@@ -17,6 +17,8 @@ interface Props {
   onCreateTemplate: (t: Template) => void;
   onCreateList: (l: PackList) => void;
   onApplyImport: (data: AppData, replace: boolean) => void;
+  // 넓은 화면에서 오른쪽에 열려 있는 항목 (목록에서 강조 표시)
+  selectedId?: string;
 }
 
 export function Home({
@@ -27,6 +29,7 @@ export function Home({
   onCreateTemplate,
   onCreateList,
   onApplyImport,
+  selectedId,
 }: Props) {
   const [creatingList, setCreatingList] = useState(false);
   const [listName, setListName] = useState('');
@@ -180,7 +183,10 @@ export function Home({
             const p = listProgress(l);
             return (
               <li key={l.id}>
-                <button className="card row-card" onClick={() => onOpenList(l.id)}>
+                <button
+                  className={'card row-card' + (l.id === selectedId ? ' active' : '')}
+                  onClick={() => onOpenList(l.id)}
+                >
                   <div className="row-main">
                     <span className="row-title">{l.name}</span>
                     {l.templateName && <span className="tag">기본: {l.templateName}</span>}
@@ -208,7 +214,10 @@ export function Home({
             const count = t.sections.reduce((n, s) => n + s.items.length, 0);
             return (
               <li key={t.id} className="template-row">
-                <button className="card row-card" onClick={() => onOpenTemplate(t.id)}>
+                <button
+                  className={'card row-card' + (t.id === selectedId ? ' active' : '')}
+                  onClick={() => onOpenTemplate(t.id)}
+                >
                   <div className="row-main">
                     <span className="row-title">{t.name}</span>
                   </div>

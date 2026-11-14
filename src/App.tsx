@@ -17,7 +17,21 @@ type View =
 
 const SEED_FLAG = 'supplies-seeded-v1';
 
+// 넓은 화면(PC 웹)에서는 목록과 편집 화면을 좌우로 나란히 보여 준다.
+const WIDE_QUERY = '(min-width: 960px)';
+function useIsWide(): boolean {
+  const [wide, setWide] = useState(() => window.matchMedia(WIDE_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE_QUERY);
+    const onChange = () => setWide(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return wide;
+}
+
 export default function App() {
+  const isWide = useIsWide();
   const [user, setUser] = useState<User | null>(null);
   const [repo, setRepo] = useState<Repo | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -152,9 +166,11 @@ export default function App() {
 
   // 편집 화면 열기 (히스토리 한 칸 쌓기)
   function open(v: View) {
+    const alreadyOpen = view.kind !== 'home';
     setView(v);
     try {
-      window.history.pushState({ depth: 1 }, '');
+      if (alreadyOpen) window.history.replaceState({ depth: 1 }, '');
+      else window.history.pushState({ depth: 1 }, '');
     } catch {
       /* 무시 */
     }
@@ -231,8 +247,51 @@ export default function App() {
     [view, lists]
   );
 
+  const selectedId = view.kind === 'home' ? undefined : view.id;
+
+  const homeEl = (
+    <Home
+      templates={templates}
+      lists={lists}
+      selectedId={selectedId}
+      onOpenTemplate={(id) => open({ kind: 'template', id })}
+      onOpenList={(id) => open({ kind: 'list', id })}
+      onCreateTemplate={upsertTemplate}
+      onCreateList={upsertList}
+      onApplyImport={applyImport}
+    />
+  );
+
+  const editorEl =
+    view.kind === 'template' && currentTemplate ? (
+      <TemplateEditor
+        key={currentTemplate.id}
+        template={currentTemplate}
+        otherTemplates={templates.filter((t) => t.id !== currentTemplate.id)}
+        onChange={upsertTemplate}
+        onCopyToTemplate={(target) => upsertTemplate(target)}
+        onDelete={() => removeTemplate(currentTemplate.id)}
+      />
+    ) : view.kind === 'list' && currentList ? (
+      <ListEditor
+        key={currentList.id}
+        list={currentList}
+        sourceTemplate={
+          currentList.templateId
+            ? templates.find((t) => t.id === currentList.templateId)
+            : undefined
+        }
+        onChange={upsertList}
+        onTemplateChange={upsertTemplate}
+        onDelete={() => removeList(currentList.id)}
+        templates={templates}
+      />
+    ) : (
+      <p className="muted center">항목을 찾을 수 없습니다.</p>
+    );
+
   return (
-    <div className="app">
+    <div className={'app' + (isWide ? ' wide' : '')}>
       <header className="topbar">
         <button className="brand" onClick={goHome}>
           🦘 Kangaroo
@@ -296,44 +355,27 @@ export default function App() {
         </div>
       )}
 
-      <main className="content">
-        {loading ? (
+      {loading ? (
+        <main className="content">
           <p className="muted center">불러오는 중…</p>
-        ) : view.kind === 'home' ? (
-          <Home
-            templates={templates}
-            lists={lists}
-            onOpenTemplate={(id) => open({ kind: 'template', id })}
-            onOpenList={(id) => open({ kind: 'list', id })}
-            onCreateTemplate={upsertTemplate}
-            onCreateList={upsertList}
-            onApplyImport={applyImport}
-          />
-        ) : view.kind === 'template' && currentTemplate ? (
-          <TemplateEditor
-            template={currentTemplate}
-            otherTemplates={templates.filter((t) => t.id !== currentTemplate.id)}
-            onChange={upsertTemplate}
-            onCopyToTemplate={(target) => upsertTemplate(target)}
-            onDelete={() => removeTemplate(currentTemplate.id)}
-          />
-        ) : view.kind === 'list' && currentList ? (
-          <ListEditor
-            list={currentList}
-            sourceTemplate={
-              currentList.templateId
-                ? templates.find((t) => t.id === currentList.templateId)
-                : undefined
-            }
-            onChange={upsertList}
-            onTemplateChange={upsertTemplate}
-            onDelete={() => removeList(currentList.id)}
-            templates={templates}
-          />
-        ) : (
-          <p className="muted center">항목을 찾을 수 없습니다.</p>
-        )}
-      </main>
+        </main>
+      ) : isWide ? (
+        <div className="split">
+          <aside className="pane-left">{homeEl}</aside>
+          <section className="pane-right">
+            {view.kind === 'home' ? (
+              <div className="empty-pane">
+                <div className="empty-pane-icon">🦘</div>
+                <p>왼쪽에서 준비물이나 기본 준비물을 고르면 여기서 편집할 수 있어요.</p>
+              </div>
+            ) : (
+              editorEl
+            )}
+          </section>
+        </div>
+      ) : (
+        <main className="content">{view.kind === 'home' ? homeEl : editorEl}</main>
+      )}
     </div>
   );
 }

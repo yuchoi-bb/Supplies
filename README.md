@@ -69,3 +69,32 @@ Firestore에 사용자별로 저장됩니다.
 users/{uid}/templates/{templateId}   # 기본 준비물 (대제목/소제목 구조)
 users/{uid}/lists/{listId}           # 실제 준비물 (체크 상태 포함, 원본 템플릿 참조)
 ```
+
+## 데이터 연동 가이드 (Firebase 작업자용)
+
+화면 코드는 저장 방식과 분리되어 있어서, 아래 파일만 고치면 데이터 연동을 바꿀 수 있습니다.
+
+| 파일 | 역할 |
+| --- | --- |
+| `src/types.ts` | 데이터 모양: `Template`(기본 준비물), `PackList`(준비물), `Section`/`Item`, 하위 블록 `SubTopic` |
+| `src/firebase.ts` | Firebase 초기화, Google 로그인/로그아웃. 설정값은 `VITE_FIREBASE_*` 환경변수 |
+| `src/storage.ts` | 저장소 인터페이스 `Repo`와 구현 2개: `LocalRepo`(기기 저장), `CloudRepo`(Firestore) |
+| `src/App.tsx` | 로그인 상태에 따라 `LocalRepo`/`CloudRepo`를 고르고, `repo.subscribe`로 실시간 동기화 |
+
+`Repo` 인터페이스 (`src/storage.ts`):
+`loadAll()`, `saveTemplate(t)`, `deleteTemplate(id)`, `saveList(l)`, `deleteList(id)`, `replaceAll(data)`(백업 복원), 선택 `subscribe(onData)`(실시간 동기화).
+이 메서드들만 맞추면 화면 쪽은 수정할 필요가 없습니다.
+
+Firestore 경로: `users/{uid}/templates/{templateId}`, `users/{uid}/lists/{listId}`.
+같은 Firebase 프로젝트를 다른 앱(예: wishlist)과 함께 쓴다면, 그 앱은 `users/{uid}/wishlist/...`처럼
+**다른 하위 컬렉션 이름**을 써야 데이터가 섞이지 않습니다.
+
+설정값 넣는 곳:
+- 로컬 개발: `.env.local` (`.env.example` 참고)
+- 웹(GitHub Pages)·안드로이드 APK 빌드: 저장소 Settings → Secrets and variables → Actions에 `VITE_FIREBASE_*` 6개.
+  두 워크플로(`deploy.yml`, `android.yml`)가 이미 이 값을 빌드에 넣도록 되어 있습니다.
+- Firebase 콘솔 → Authentication → 승인된 도메인에 `yuchoi-bb.github.io` 추가.
+
+주의: 안드로이드 앱은 Capacitor 웹뷰 안에서 돌기 때문에, 현재의 `signInWithPopup`(웹 팝업 로그인)은
+Google 정책상 앱 안에서 막힐 가능성이 큽니다. 안드로이드 로그인은 네이티브 로그인 플러그인
+(예: `@capacitor-firebase/authentication`)으로 바꾸는 작업이 필요합니다. 웹에서는 지금 방식 그대로 동작합니다.

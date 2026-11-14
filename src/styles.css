@@ -566,3 +566,53 @@ body {
   border-radius: 999px;
   transition: width 0.2s;
 }
+
+/* ---------- 넓은 화면(PC 웹): 왼쪽 목록 + 오른쪽 편집 ---------- */
+.app.wide {
+  max-width: 1240px;
+}
+
+.split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding: 20px 24px 40px;
+}
+
+.pane-left {
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.pane-right {
+  min-width: 0;
+}
+
+.empty-pane {
+  margin-top: 40px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.empty-pane-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.row-card:hover {
+  border-color: var(--accent);
+}
+
+.row-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--tint);
+}
