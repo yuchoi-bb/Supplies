@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CheckItem, CheckSection, PackList, Section, Template } from '../types';
 import { checkSubtopicFromTemplate, sectionLabel, uid } from '../types';
+import { ItemDnd, SortableItemRow, SortableItems } from '../dnd';
 
 const ONLY_UNCHECKED_KEY = 'kangaroo-only-unchecked';
 
@@ -220,6 +221,17 @@ export function ListEditor({
     });
   }
 
+  // 끌어다 놓기로 바뀐 묶음들의 항목을 한 번에 반영 (블록 사이 이동 포함)
+  function applyItemMove(changed: Map<string, CheckItem[]>) {
+    const swap = (sections: CheckSection[]) =>
+      sections.map((x) => (changed.has(x.id) ? { ...x, items: changed.get(x.id)! } : x));
+    onChange({
+      ...list,
+      sections: swap(list.sections),
+      subtopics: subtopics.map((st) => ({ ...st, sections: swap(st.sections) })),
+    });
+  }
+
   function sectionCard(s: CheckSection, subId?: string) {
     const container = getContainer(subId);
 
@@ -260,9 +272,9 @@ export function ListEditor({
             묶음 삭제
           </button>
         </div>
-        <ul className="items">
+        <SortableItems sectionId={s.id} itemIds={s.items.map((it) => it.id)}>
           {s.items.map((it) => (
-            <li className="item-row" key={it.id}>
+            <SortableItemRow key={it.id} id={it.id}>
               <label className={'check-label' + (it.checked ? ' checked' : '')}>
                 <input type="checkbox" checked={it.checked} onChange={() => toggle(subId, s, it)} />
                 <span>{it.name}</span>
@@ -291,9 +303,9 @@ export function ListEditor({
                   ✕
                 </button>
               </span>
-            </li>
+            </SortableItemRow>
           ))}
-        </ul>
+        </SortableItems>
         <div className="add-row">
           <input
             className="input"
@@ -321,7 +333,10 @@ export function ListEditor({
   }
 
   return (
-    <div>
+    <ItemDnd
+      sections={[...list.sections, ...subtopics.flatMap((st) => st.sections)]}
+      onMove={applyItemMove}
+    >
       <div className="page-head">
         <h2 className="page-title" onClick={rename} title="눌러서 이름 수정">
           {list.name} <span className="edit-hint">✏️</span>
@@ -426,6 +441,6 @@ export function ListEditor({
           </select>
         </div>
       )}
-    </div>
+    </ItemDnd>
   );
 }

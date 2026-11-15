@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Item, Section, Template } from '../types';
 import { sectionLabel, subtopicFromTemplate, uid } from '../types';
+import { ItemDnd, SortableItemRow, SortableItems } from '../dnd';
 
 interface Props {
   template: Template;
@@ -170,6 +171,17 @@ export function TemplateEditor({
     onChange({ ...template, subtopics: subtopics.filter((x) => x.id !== subId) });
   }
 
+  // 끌어다 놓기로 바뀐 묶음들의 항목을 한 번에 반영 (블록 사이 이동 포함)
+  function applyItemMove(changed: Map<string, Item[]>) {
+    const swap = (sections: Section[]) =>
+      sections.map((x) => (changed.has(x.id) ? { ...x, items: changed.get(x.id)! } : x));
+    onChange({
+      ...template,
+      sections: swap(template.sections),
+      subtopics: subtopics.map((st) => ({ ...st, sections: swap(st.sections) })),
+    });
+  }
+
   function sectionCard(s: Section, subId?: string) {
     const container = getContainer(subId);
     return (
@@ -185,9 +197,9 @@ export function TemplateEditor({
             묶음 삭제
           </button>
         </div>
-        <ul className="items">
+        <SortableItems sectionId={s.id} itemIds={s.items.map((it) => it.id)}>
           {s.items.map((it) => (
-            <li className="item-row" key={it.id}>
+            <SortableItemRow key={it.id} id={it.id}>
               <span className="item-name" onClick={() => renameItem(subId, s, it)}>
                 {it.name}
               </span>
@@ -232,9 +244,9 @@ export function TemplateEditor({
                   ✕
                 </button>
               </span>
-            </li>
+            </SortableItemRow>
           ))}
-        </ul>
+        </SortableItems>
         <div className="add-row">
           <input
             className="input"
@@ -252,7 +264,10 @@ export function TemplateEditor({
   }
 
   return (
-    <div>
+    <ItemDnd
+      sections={[...template.sections, ...subtopics.flatMap((st) => st.sections)]}
+      onMove={applyItemMove}
+    >
       <div className="page-head">
         <h2 className="page-title" onClick={rename} title="눌러서 이름 수정">
           {template.name} <span className="edit-hint">✏️</span>
@@ -310,6 +325,6 @@ export function TemplateEditor({
           </select>
         </div>
       )}
-    </div>
+    </ItemDnd>
   );
 }

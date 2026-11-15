@@ -616,3 +616,58 @@ body {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--tint);
 }
+
+/* ---------- 항목 끌어다 놓기 ---------- */
+.drag-handle {
+  flex-shrink: 0;
+  width: 26px;
+  height: 30px;
+  margin-right: 2px;
+  border: none;
+  background: transparent;
+  color: #b3ada3;
+  font-size: 18px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none; /* 터치로 끌 때 화면이 스크롤되지 않게 */
+  border-radius: 6px;
+}
+
+.drag-handle:hover {
+  color: var(--primary);
+  background: var(--tint);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.item-row.dragging {
+  opacity: 0.35;
+}
+
+.items {
+  min-height: 8px;
+  border-radius: 8px;
+}
+
+/* 끄는 중에는 빈 묶음도 놓을 자리가 보이게 */
+.dnd-active .items {
+  min-height: 40px;
+}
+
+.items.drop-over {
+  background: var(--tint);
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.drag-overlay {
+  padding: 10px 14px;
+  background: var(--card);
+  border: 2px solid var(--primary);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(20, 29, 51, 0.25);
+  font-weight: 600;
+  cursor: grabbing;
+}
